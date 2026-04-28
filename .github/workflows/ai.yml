@@ -1,9 +1,7 @@
 name: ai
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:  # Manual trigger
 
 env:
   JAVA_VERSION: 17
