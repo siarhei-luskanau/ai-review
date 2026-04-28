@@ -1,0 +1,13 @@
+[versions]
+
+jdkVersion = "17"
+kotlin = "2.3.21"
+ktlint = "1.8.0"
+
+[libraries]
+
+ktlint-cli = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
+
+[plugins]
+
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
