@@ -54,3 +54,51 @@ jobs:
       - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
 
       - run: ./gradlew build jar --stacktrace
+
+
+
+  AiReview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama service
+        run: OLLAMA_NUM_CTX=65536 ollama serve &
+
+      - name: Install Claude Code
+        run: curl -fsSL https://claude.ai/install.sh | bash
+
+      - name: Pull model
+        run: ollama pull qwen3.5:2b
+
+      - name: Run Claude Code
+        env:
+          ANTHROPIC_AUTH_TOKEN: ollama
+          ANTHROPIC_API_KEY: ""
+          ANTHROPIC_BASE_URL: http://localhost:11434
+        run: |
+          claude \
+            --model qwen3.5:2b \
+            --dangerously-skip-permissions \
+            --print \
+            "You are running in a fully automated CI/CD pipeline. Do NOT ask any questions or request confirmation. Do NOT wait for user input. Make all decisions autonomously. If something is unclear, make a reasonable assumption and proceed.\
+            Verify project with `./gradlew run` command. Fix issue if we have any."
+
+      - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7
+        with:
+          commit_message: AI review
