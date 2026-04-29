@@ -2,6 +2,7 @@ name: ai
 
 on:
   workflow_dispatch:  # Manual trigger
+  pull_request:
 
 env:
   JAVA_VERSION: 17
@@ -12,6 +13,52 @@ jobs:
 
 
   AiReview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
+
+      - name: Install Ollama
+        run: curl -fsSL https://ollama.com/install.sh | sh
+
+      - name: Start Ollama service
+        run: ollama serve &
+
+      - name: Install Claude Code
+        run: curl -fsSL https://claude.ai/install.sh | bash
+
+      - name: Run Claude Code
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: |
+          ollama launch claude \
+            --model qwen3.5:0.8b \
+            --yes \
+            -- --dangerously-skip-permissions \
+            --print \
+            "You are running in a fully automated CI/CD pipeline. Do NOT ask any questions or request confirmation. Do NOT wait for user input. Make all decisions autonomously. If something is unclear, make a reasonable assumption and proceed. \
+            Review the pull request changes by running: git diff origin/${BASE_REF}...HEAD \
+            Examine each changed file carefully. For each issue found, note the file and line number. \
+            Evaluate the changes for: (1) bugs and logic errors, (2) security vulnerabilities such as injection, auth bypass, or exposed secrets, (3) code quality and adherence to existing patterns in the codebase, (4) missing or inadequate tests, (5) performance concerns. \
+            Output a structured Markdown review with these sections: ## Summary (brief description of what the PR does), ## Issues (list any bugs or problems with file:line references, or 'None found'), ## Suggestions (improvement ideas that are not blocking), ## Verdict (one of: APPROVE / REQUEST_CHANGES / COMMENT)."
+
+
+
+  AiFix:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -40,7 +87,7 @@ jobs:
       - name: Run Claude Code
         run: |
           ollama launch claude \
-            --model qwen3.5:4b \
+            --model qwen3.5:0.8b \
             --yes \
             -- --dangerously-skip-permissions \
             --print \
